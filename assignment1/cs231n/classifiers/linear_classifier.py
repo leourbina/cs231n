@@ -60,10 +60,10 @@ class LinearClassifier(object):
             X_batch = X[idx]
             y_batch = y[idx]
 
-            loss, grad = self.loss(X_batch, y_batch, reg)
+            loss, dW = self.loss(X_batch, y_batch, reg)
             loss_history.append(loss)
 
-            W -= learning_rate * dW
+            self.W -= learning_rate * dW
 
             if verbose and it % 100 == 0:
                 print('iteration %d / %d: loss %f' % (it, num_iters, loss))
@@ -84,17 +84,7 @@ class LinearClassifier(object):
           array of length N, and each element is an integer giving the predicted
           class.
         """
-        y_pred = np.zeros(X.shape[0])
-        ###########################################################################
-        # TODO:                                                                   #
-        # Implement this method. Store the predicted labels in y_pred.            #
-        ###########################################################################
-        # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        y_pred = X.dot(self.W)
-
-        # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-        return y_pred
+        return np.argmax(X.dot(self.W), axis=1)
 
     def loss(self, X_batch, y_batch, reg):
         """
