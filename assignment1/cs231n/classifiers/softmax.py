@@ -1,7 +1,5 @@
-from builtins import range
 import numpy as np
-from random import shuffle
-from past.builtins import xrange
+
 
 def softmax_loss_naive(W, X, y, reg):
     """
@@ -21,6 +19,11 @@ def softmax_loss_naive(W, X, y, reg):
     - loss as single float
     - gradient with respect to weights W; an array of same shape as W
     """
+    def softmax(x):
+        x -= np.max(x)
+        probs = np.exp(x)
+        return probs / np.sum(probs)
+
     # Initialize the loss and gradient to zero.
     loss = 0.0
     dW = np.zeros_like(W)
@@ -33,9 +36,23 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = X.shape[0]
 
-    # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    for i in range(N):
+        scores = X[i].dot(W)
+        probs = softmax(scores)
+        result = -np.log(probs[y[i]])
+        loss += result
+
+        dscores = probs
+        dscores[y[i]] -= 1
+        dW += X[i][:, np.newaxis] * dscores
+
+    loss /= N
+    loss += reg * np.sum(W * W)
+
+    dW /= N
+    dW += reg * W
 
     return loss, dW
 
@@ -46,9 +63,17 @@ def softmax_loss_vectorized(W, X, y, reg):
 
     Inputs and outputs are the same as softmax_loss_naive.
     """
+
+    def softmax(x):
+        x -= np.max(x)
+        probs = np.exp(x)
+        return probs / np.sum(probs, axis=1, keepdims=True)
+
     # Initialize the loss and gradient to zero.
     loss = 0.0
     dW = np.zeros_like(W)
+
+    N = X.shape[0]
 
     #############################################################################
     # TODO: Compute the softmax loss and its gradient using no explicit loops.  #
@@ -58,8 +83,14 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = X.dot(W)
+    probs = softmax(scores)
+    result = -np.log(probs[np.arange(N), y])
+    loss = np.sum(result) / N + reg * np.sum(W * W)
 
+    dscores = probs
+    dscores[np.arange(N), y] -= 1
+    dW = np.dot(X.T, dscores) / N + reg * W
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     return loss, dW
