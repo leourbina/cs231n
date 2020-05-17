@@ -1,4 +1,5 @@
 import numpy as np
+from operator import itemgetter
 
 """
 This file implements various first-order update rules that are commonly used
@@ -67,7 +68,11 @@ def sgd_momentum(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    mu = config['momentum']
+    lr = config['learning_rate']
+
+    v = mu * v - lr * dw
+    next_w = w + v
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -76,7 +81,6 @@ def sgd_momentum(w, dw, config=None):
     config['velocity'] = v
 
     return next_w, config
-
 
 
 def rmsprop(w, dw, config=None):
@@ -105,7 +109,12 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    lr, dr, eps, cache = config['learning_rate'], config['decay_rate'], config['epsilon'], config['cache']
+
+    cache = dr * cache + (1 - dr) * dw ** 2
+    next_w = w - lr * dw / (np.sqrt(cache) + eps)
+
+    config['cache'] = cache
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -115,7 +124,20 @@ def rmsprop(w, dw, config=None):
     return next_w, config
 
 
-def adam(w, dw, config=None):
+def adagrad(w, dw, config=None):
+    if config is None: config = {}
+    config.setdefault('learning_rate', 1e-3)
+    config.setdefault('cache', np.zeros_like(w))
+    config.setdefault('epsilon', 1e-8)
+
+    config['cache'] += dw**2
+
+    lr, cache, eps = itemgetter('learning_rate', 'cache', 'epsilon')(config)
+
+    return w - lr * dw / (np.sqrt(cache) + eps), config
+
+
+def adam(w, dw, config=None
     """
     Uses the Adam update rule, which incorporates moving averages of both the
     gradient and its square and a bias correction term.
@@ -149,7 +171,20 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    lr, beta1, beta2, eps, m, v, t = itemgetter('learning_rate', 'beta1', 'beta2', 'epsilon', 'm', 'v', 't')(config)
+
+    t += 1
+    m = beta1 * m + (1 - beta1) * dw
+    mt = m / (1 - beta1**t)
+
+    v = beta2 * v + (1 - beta2) * (dw**2)
+    vt = v / (1 - beta2**t)
+
+    next_w = w - lr * mt / (np.sqrt(vt) + eps)
+
+    config['t'] = t
+    config['m'] = m
+    config['v'] = v
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 import torch
 import torch.nn as nn
@@ -54,6 +53,7 @@ def conv_forward_pytorch(x, w, b, conv_param):
     cache = (x, w, b, conv_param, tx, out, layer)
     return out, cache
 
+
 def conv_backward_pytorch(dout, cache):
     x, _, _, _, tx, out, layer = cache
     out.backward(torch.tensor(dout))
@@ -61,6 +61,7 @@ def conv_backward_pytorch(dout, cache):
     dw = layer.weight.grad.detach().numpy()
     db = layer.bias.grad.detach().numpy()
     return dx, dw, db
+
 
 def conv_forward_strides(x, w, b, conv_param):
     N, C, H, W = x.shape
