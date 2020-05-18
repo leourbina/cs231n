@@ -137,7 +137,7 @@ def adagrad(w, dw, config=None):
     return w - lr * dw / (np.sqrt(cache) + eps), config
 
 
-def adam(w, dw, config=None
+def adam(w, dw, config=None):
     """
     Uses the Adam update rule, which incorporates moving averages of both the
     gradient and its square and a bias correction term.
