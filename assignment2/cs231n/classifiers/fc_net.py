@@ -1,9 +1,14 @@
-from builtins import range
-from builtins import object
 import numpy as np
 
-from cs231n.layers import svm_loss, softmax_loss
-from cs231n.layer_utils import affine_relu_forward, affine_relu_backward
+from cs231n.layers import \
+    affine_forward, \
+    affine_backward, \
+    batchnorm_forward, \
+    batchnorm_backward_alt as batchnorm_backward, \
+    relu_forward, \
+    relu_backward, \
+    svm_loss, \
+    softmax_loss
 
 
 class TwoLayerNet(object):
@@ -201,6 +206,8 @@ class FullyConnectedNet(object):
         for i, (dim, next_dim) in enumerate(zip(dims, dims[1:]), 1):
             self.params[f"W{i}"] = np.random.normal(loc=0.0, scale=weight_scale, size=(dim, next_dim))
             self.params[f"b{i}"] = np.zeros((next_dim,))
+            self.params[f"gamma{i}"] = np.ones((next_dim,))
+            self.params[f"beta{i}"] = np.zeros((next_dim,))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -265,9 +272,22 @@ class FullyConnectedNet(object):
         arg, caches = X, []
 
         for i in range(1, self.num_layers + 1):
+            cache = {}
+
             W = self.params[f"W{i}"]
             b = self.params[f"b{i}"]
-            arg, cache = affine_relu_forward(arg, W, b)
+            arg, fc_cache = affine_forward(arg, W, b)
+            cache['fc_cache'] = fc_cache
+
+            if self.normalization == 'batchnorm' and i != self.num_layers:
+                gamma = self.params[f"gamma{i}"]
+                beta = self.params[f"beta{i}"]
+                arg, bn_cache = batchnorm_forward(arg, gamma, beta, self.bn_params[i-1])
+                cache['bn_cache'] = bn_cache
+
+            arg, relu_cache = relu_forward(arg)
+            cache['relu_cache'] = relu_cache
+
             caches.append(cache)
 
         scores = arg
@@ -302,8 +322,20 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers, 0, -1):
             W = self.params[f"W{i}"]
             cache = caches[i-1]
+            relu_cache = cache['relu_cache']
+            fc_cache = cache['fc_cache']
 
-            dout, dw, db = affine_relu_backward(dout, cache)
+            da = relu_backward(dout, relu_cache)
+
+            if self.normalization == 'batchnorm' and i != self.num_layers:
+                bn_cache = cache['bn_cache']
+                da, dgamma, dbeta = batchnorm_backward(da, bn_cache)
+
+                grads[f"gamma{i}"] = dgamma
+                grads[f"beta{i}"] = dbeta
+
+            dout, dw, db = affine_backward(da, fc_cache)
+
             grads[f"W{i}"] = dw + self.reg * W
             grads[f"b{i}"] = db
 
