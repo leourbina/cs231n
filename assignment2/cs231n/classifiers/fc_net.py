@@ -206,8 +206,10 @@ class FullyConnectedNet(object):
         for i, (dim, next_dim) in enumerate(zip(dims, dims[1:]), 1):
             self.params[f"W{i}"] = np.random.normal(loc=0.0, scale=weight_scale, size=(dim, next_dim))
             self.params[f"b{i}"] = np.zeros((next_dim,))
-            self.params[f"gamma{i}"] = np.ones((next_dim,))
-            self.params[f"beta{i}"] = np.zeros((next_dim,))
+
+            if self.normalization and i != self.num_layers:
+                self.params[f"gamma{i}"] = np.ones((next_dim,))
+                self.params[f"beta{i}"] = np.zeros((next_dim,))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -330,7 +332,6 @@ class FullyConnectedNet(object):
             if self.normalization == 'batchnorm' and i != self.num_layers:
                 bn_cache = cache['bn_cache']
                 da, dgamma, dbeta = batchnorm_backward(da, bn_cache)
-
                 grads[f"gamma{i}"] = dgamma
                 grads[f"beta{i}"] = dbeta
 
