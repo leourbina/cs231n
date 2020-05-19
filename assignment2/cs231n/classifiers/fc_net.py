@@ -5,6 +5,8 @@ from cs231n.layers import \
     affine_backward, \
     batchnorm_forward, \
     batchnorm_backward_alt as batchnorm_backward, \
+    dropout_forward, \
+    dropout_backward, \
     layernorm_forward, \
     layernorm_backward, \
     relu_forward, \
@@ -280,19 +282,19 @@ class FullyConnectedNet(object):
 
             W = self.params[f"W{i}"]
             b = self.params[f"b{i}"]
-            arg, fc_cache = affine_forward(arg, W, b)
-            cache['fc_cache'] = fc_cache
+            arg, cache['fc_cache'] = affine_forward(arg, W, b)
 
             if i != self.num_layers and self.normalization:
                 gamma = self.params[f"gamma{i}"]
                 beta = self.params[f"beta{i}"]
 
                 normalize_forward = batchnorm_forward if self.normalization is 'batchnorm' else layernorm_forward
-                arg, bn_cache = normalize_forward(arg, gamma, beta, self.bn_params[i-1])
-                cache['bn_cache'] = bn_cache
+                arg, cache['bn_cache'] = normalize_forward(arg, gamma, beta, self.bn_params[i-1])
 
-            arg, relu_cache = relu_forward(arg)
-            cache['relu_cache'] = relu_cache
+            arg, cache['relu_cache'] = relu_forward(arg)
+
+            if self.use_dropout:
+                arg, cache['dropout_cache'] = dropout_forward(arg, self.dropout_param)
 
             caches.append(cache)
 
@@ -328,19 +330,19 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers, 0, -1):
             W = self.params[f"W{i}"]
             cache = caches[i-1]
-            relu_cache = cache['relu_cache']
-            fc_cache = cache['fc_cache']
 
-            da = relu_backward(dout, relu_cache)
+            if self.use_dropout:
+                dout = dropout_backward(dout, cache['dropout_cache'])
+
+            da = relu_backward(dout, cache['relu_cache'])
 
             if i != self.num_layers and self.normalization:
                 normalize_backward = batchnorm_backward if self.normalization is 'batchnorm' else layernorm_backward
-                bn_cache = cache['bn_cache']
-                da, dgamma, dbeta = batchnorm_backward(da, bn_cache)
+                da, dgamma, dbeta = batchnorm_backward(da, cache['bn_cache'])
                 grads[f"gamma{i}"] = dgamma
                 grads[f"beta{i}"] = dbeta
 
-            dout, dw, db = affine_backward(da, fc_cache)
+            dout, dw, db = affine_backward(da, cache['fc_cache'])
 
             grads[f"W{i}"] = dw + self.reg * W
             grads[f"b{i}"] = db

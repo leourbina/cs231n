@@ -1,3 +1,5 @@
+import math
+from operator import itemgetter
 import numpy as np
 
 
@@ -503,7 +505,8 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        mask = (np.random.rand(*x.shape) < p) / p
+        out = x * mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -515,7 +518,7 @@ def dropout_forward(x, dropout_param):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out = x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -546,7 +549,7 @@ def dropout_backward(dout, cache):
         #######################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        dx = dout * mask
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         #######################################################################
@@ -584,15 +587,49 @@ def conv_forward_naive(x, w, b, conv_param):
       H' = 1 + (H + 2 * pad - HH) / stride
       W' = 1 + (W + 2 * pad - WW) / stride
     - cache: (x, w, b, conv_param)
+
+
+    (N, C, HH, WW)
+    (F, C, HH, WW)
+
+    view   = (N, 1, C, HH, WW)
+    w      =    (F, C, HH, WW)
+
+    result = (N, F, C, HH, WW) -sum-> (N, F)
+
+    N, F, H1, W1
     """
-    out = None
     ###########################################################################
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad, stride = itemgetter('pad', 'stride')(conv_param)
+
+
+    npad = [(0, 0), (0, 0), (pad, pad), (pad, pad)]
+    x_pad = np.pad(x, pad_width=npad)
+
+    H1 = int((H + 2*pad - HH)/stride + 1)
+    W1 = int((W + 2*pad - WW)/stride + 1)
+
+    out = np.zeros((N, F, H1, W1))
+
+    for i in range(H1):
+        i_begin = stride*i
+        i_end = i_begin + HH
+
+        for j in range(W1):
+            j_begin = stride*j
+            j_end = j_begin + WW
+            view = x_pad[:, np.newaxis, :, i_begin:i_end, j_begin:j_end]
+            result = np.sum(view * w, axis=(2, 3, 4)) + b
+            out[:, :, i, j] = result
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -621,7 +658,7 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
