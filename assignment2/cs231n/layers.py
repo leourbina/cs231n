@@ -386,9 +386,18 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N, D = x.shape
 
-    pass
+    mu = np.sum(x, axis=1, keepdims=True) / D
+    xmu = x - mu
+    sq = xmu ** 2
+    var = np.sum(sq, axis=1, keepdims=True) / D
+    std = np.sqrt(var + eps)
+    istd = 1 / std
+    xhat = xmu * istd
+    out = gamma * xhat + beta
 
+    cache = (xhat, gamma, xmu, istd, std, var, eps, N, D)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -422,7 +431,30 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    xhat, gamma, xmu, istd, std, var, eps, N, D = cache
+
+    dxhat = dout * gamma
+    dxmu1 = dxhat * istd
+
+    distd = np.sum(dxhat * xmu, axis=1, keepdims=True)
+    dstd = - distd / (std ** 2)
+    dvar = dstd / (2.0 * np.sqrt(var + eps))
+
+    dsq = dvar / D * np.ones((N, D))
+    dxmu2 = 2 * dsq * xmu
+
+    dx1 = dxmu1 + dxmu2
+
+    dmu = - np.sum(dx1, axis=1, keepdims=True)
+
+    dx2 = dmu * np.ones((N, D)) / D
+
+    dx = dx1 + dx2
+
+#    dx0 = (1. * gamma/(D * std)) * (D * dout - np.sum(dout, axis=1, keepdims=True) - xmu * np.sum((dout * xmu), axis=1, keepdims=True)/std**2)
+
+    dgamma = np.sum(dout * xhat, axis=0)
+    dbeta = np.sum(dout, axis=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

@@ -5,6 +5,8 @@ from cs231n.layers import \
     affine_backward, \
     batchnorm_forward, \
     batchnorm_backward_alt as batchnorm_backward, \
+    layernorm_forward, \
+    layernorm_backward, \
     relu_forward, \
     relu_backward, \
     svm_loss, \
@@ -207,7 +209,7 @@ class FullyConnectedNet(object):
             self.params[f"W{i}"] = np.random.normal(loc=0.0, scale=weight_scale, size=(dim, next_dim))
             self.params[f"b{i}"] = np.zeros((next_dim,))
 
-            if self.normalization and i != self.num_layers:
+            if self.normalization is not None and i != self.num_layers:
                 self.params[f"gamma{i}"] = np.ones((next_dim,))
                 self.params[f"beta{i}"] = np.zeros((next_dim,))
 
@@ -281,10 +283,12 @@ class FullyConnectedNet(object):
             arg, fc_cache = affine_forward(arg, W, b)
             cache['fc_cache'] = fc_cache
 
-            if self.normalization == 'batchnorm' and i != self.num_layers:
+            if i != self.num_layers and self.normalization:
                 gamma = self.params[f"gamma{i}"]
                 beta = self.params[f"beta{i}"]
-                arg, bn_cache = batchnorm_forward(arg, gamma, beta, self.bn_params[i-1])
+
+                normalize_forward = batchnorm_forward if self.normalization is 'batchnorm' else layernorm_forward
+                arg, bn_cache = normalize_forward(arg, gamma, beta, self.bn_params[i-1])
                 cache['bn_cache'] = bn_cache
 
             arg, relu_cache = relu_forward(arg)
@@ -329,7 +333,8 @@ class FullyConnectedNet(object):
 
             da = relu_backward(dout, relu_cache)
 
-            if self.normalization == 'batchnorm' and i != self.num_layers:
+            if i != self.num_layers and self.normalization:
+                normalize_backward = batchnorm_backward if self.normalization is 'batchnorm' else layernorm_backward
                 bn_cache = cache['bn_cache']
                 da, dgamma, dbeta = batchnorm_backward(da, bn_cache)
                 grads[f"gamma{i}"] = dgamma
