@@ -694,6 +694,8 @@ def conv_backward_naive(dout, cache):
             result = np.sum(view * dout_dim, axis=(0, 3, 4))
             dw[:, :, i, j] = result
 
+    db = np.sum(dout, axis=(0, 2, 3))
+
     # out =  (N, F, H1, W1)
 
     # dx is the full convolution of dout with the rotation of w by 180 degrees and
@@ -719,33 +721,6 @@ def conv_backward_naive(dout, cache):
 
 
     db = np.sum(dout, axis=(0, 2, 3))
-
-
-#    w_rot = np.rot90(np.rot90(w, axes=(2, 3)), axes=(2, 3))
-#
-#    npad = [(0,), (0,), (H-1, ), (W-1,)] # padding for full convolution
-#    w_pad = np.pad(w_rot, pad_width=npad)
-#
-#    dx = np.zeros(x.shape)
-#
-#    for i in range(H):
-#        i_begin = stride*i
-#        i_end = i_begin + H
-#        for j in range(W):
-#            j_begin = stride*j
-#            j_end = j_begin + W
-#
-#            view = w_pad[:, :, i_begin:i_end, j_begin:j_end]
-#            print("view       ", view.shape)
-#            print("dx", dx[:, :, i, j].shape)
-#            result = view * dout_dim
-#
-#            print("result", result.shape)
-#            return
-#
-#            dx[:, :, i, j] = result
-
-
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
