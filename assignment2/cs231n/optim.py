@@ -82,6 +82,22 @@ def sgd_momentum(w, dw, config=None):
 
     return next_w, config
 
+def nesterov(w, dw, config=None):
+    if config is None: config = {}
+    config.setdefault('learning_rate', 1e-2)
+    config.setdefault('momentum', 0.9)
+
+    v = config.get('velocity', np.zeros_like(w))
+    mu = config['momentum']
+    lr = config['learning_rate']
+
+    old_v = v
+
+    v = mu * v - lr * dw
+    next_w = w + v + mu*(v - old_v)
+
+    config['velocity'] = v
+    return next_w, config
 
 def rmsprop(w, dw, config=None):
     """

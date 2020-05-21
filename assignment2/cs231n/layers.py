@@ -589,6 +589,16 @@ def conv_forward_naive(x, w, b, conv_param):
     - cache: (x, w, b, conv_param)
 
 
+    Input
+    x = (N, C, H, W)
+    w = (F, C, HH, WW)
+
+    Output
+    y = (N, F, H1, W1)
+
+    ----
+    Broadcasting:
+
     (N, C, HH, WW)
     (F, C, HH, WW)
 
@@ -658,6 +668,83 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    x, w, b, conv_param = cache
+    pad, stride = itemgetter('pad', 'stride')(conv_param)
+
+
+    npad = [(0, 0), (0, 0), (pad, pad), (pad, pad)]
+    x_pad = np.pad(x, pad_width=npad)
+
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    _, _, H1, W1 = dout.shape
+
+    ## dw is the convolution of dout * x
+
+    dw = np.zeros(w.shape)
+    dout_dim = dout[:, :, np.newaxis, :, :]
+    for i in range(HH):
+        i_begin = stride*i
+        i_end = i_begin + H1
+        for j in range(WW):
+            j_begin = stride*j
+            j_end = j_begin + W1
+
+            view = x_pad[:,np.newaxis,:, i_begin:i_end, j_begin:j_end]
+            result = np.sum(view * dout_dim, axis=(0, 3, 4))
+            dw[:, :, i, j] = result
+
+    # out =  (N, F, H1, W1)
+
+    # dx is the full convolution of dout with the rotation of w by 180 degrees and
+
+    # brute force this shiiiiii
+    dx = np.zeros(x.shape)
+    for t in range(N): # samples
+        for i in range(H):
+            for j in range(W): # Coordinates in dx
+                for f in range(F): # filters
+                    for k in range(H1):
+                        for l in range(W1): # Coordinates in the output
+                            mask1 = np.zeros_like(w[f, :, :, :])
+                            mask2 = np.zeros_like(w[f, :, :, :])
+
+                            if (i + pad - k * stride) < HH and (i + pad - k * stride) >= 0:
+                                mask1[:, i + pad - k * stride, :] = 1.0
+                            if (j + pad - l * stride) < WW and (j + pad - l * stride) >= 0:
+                                mask2[:, :, j + pad - l * stride] = 1.0
+
+                            w_mask = np.sum(w[f, :, :, :] * mask1 * mask2, axis=(1, 2))
+                            dx[t, :, i, j] += dout[t, f, k, l] * w_mask
+
+
+    db = np.sum(dout, axis=(0, 2, 3))
+
+
+#    w_rot = np.rot90(np.rot90(w, axes=(2, 3)), axes=(2, 3))
+#
+#    npad = [(0,), (0,), (H-1, ), (W-1,)] # padding for full convolution
+#    w_pad = np.pad(w_rot, pad_width=npad)
+#
+#    dx = np.zeros(x.shape)
+#
+#    for i in range(H):
+#        i_begin = stride*i
+#        i_end = i_begin + H
+#        for j in range(W):
+#            j_begin = stride*j
+#            j_end = j_begin + W
+#
+#            view = w_pad[:, :, i_begin:i_end, j_begin:j_end]
+#            print("view       ", view.shape)
+#            print("dx", dx[:, :, i, j].shape)
+#            result = view * dout_dim
+#
+#            print("result", result.shape)
+#            return
+#
+#            dx[:, :, i, j] = result
+
 
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
@@ -692,7 +779,22 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    stride, pheight, pwidth = itemgetter('stride', 'pool_height', 'pool_width')(pool_param)
+
+    N, C, H, W = x.shape
+    H1 = int(1 + (H - pheight) / stride)
+    W1 = int(1 + (W - pwidth) / stride)
+
+    out = np.zeros((N, C, H1, W1))
+    for i in range(H1):
+        i_begin = i * stride
+        i_end = i_begin + pheight
+        for j in range(W1):
+            j_begin = j * stride
+            j_end = j_begin + pwidth
+
+            view = x[:, :, i_begin:i_end, j_begin:j_end]
+            out[:, :, i, j] = np.amax(view, axis=(2, 3))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -719,7 +821,26 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, pool_param = cache
+    stride, pheight, pwidth = itemgetter('stride', 'pool_height', 'pool_width')(pool_param)
+
+    N, C, H1, W1 = dout.shape
+
+    dx = np.zeros(x.shape)
+    for n in range(N):
+        for c in range(C):
+            for i in range(H1):
+                i_begin = i * stride
+                i_end = i_begin + pheight
+                for j in range(W1):
+                    j_begin = j * stride
+                    j_end = j_begin + pwidth
+
+                    view = x[n, c, i_begin:i_end, j_begin:j_end]
+                    mask = view.max() == view
+
+                    dx[n, c, i_begin:i_end, j_begin:j_end] = dout[n, c, i, j] * mask
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
