@@ -206,7 +206,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         mu = np.sum(x, axis=0) / N
         xmu = x - mu
         sq = xmu ** 2
-        var = np.sum(sq, axis=1, keepdims=True) / N
+        var = np.sum(sq, axis=0, keepdims=True) / N
         std = np.sqrt(var + eps)
         istd = 1 / std
         xhat = xmu * istd
