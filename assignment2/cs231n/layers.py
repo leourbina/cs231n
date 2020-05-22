@@ -855,8 +855,11 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # Your implementation should be very short; ours is less than five lines. #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N, C, H, W = x.shape
 
-    pass
+    x0 = np.reshape(np.transpose(x, axes=(0, 2, 3, 1)), (-1, C))
+    res, cache = batchnorm_forward(x0, gamma, beta, bn_param)
+    out = np.transpose(np.reshape(res, (N, H, W, C)), axes=(0, 3, 1, 2))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -890,7 +893,12 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # - dout: Upstream derivatives, of shape (N, D) #  D -> C
+
+    N, C, H, W = dout.shape
+    dout0 = np.reshape(np.transpose(dout, axes=(0, 2, 3, 1)), (-1, C))
+    dx0, dgamma, dbeta = batchnorm_backward_alt(dout0, cache)
+    dx = np.transpose(np.reshape(dx0, (N, H, W, C)), axes=(0, 3, 1, 2))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
