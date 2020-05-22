@@ -340,7 +340,8 @@ def batchnorm_backward_alt(dout, cache):
 
     xhat, gamma, xmu, istd, std, var, eps, N, D = cache
 
-    dx = (1. * gamma/(N * std)) * (N * dout - np.sum(dout, axis=0) - xhat * np.sum(xhat * dout, axis=0))
+    dxhat = gamma * dout
+    dx = (1./(N * std)) * (N *dxhat  - np.sum(dxhat, axis=0) - xhat * np.sum(xhat * dxhat, axis=0))
     dgamma = np.sum(dout * xhat, axis=0)
     dbeta = np.sum(dout, axis=0)
 
