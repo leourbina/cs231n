@@ -206,7 +206,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         mu = np.sum(x, axis=0) / N
         xmu = x - mu
         sq = xmu ** 2
-        var = np.sum(sq, axis=0) / N
+        var = np.sum(sq, axis=1, keepdims=True) / N
         std = np.sqrt(var + eps)
         istd = 1 / std
         xhat = xmu * istd
@@ -388,28 +388,18 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     # Transpose x
-    x = x.T
+    out, cache = batchnorm_forward(x.T, gamma[:, np.newaxis], beta[:, np.newaxis], {'mode': 'train', **ln_param})
+    out = out.T
 
-    N, D = x.shape
-
-    mu = np.sum(x, axis=1, keepdims=True) / D
-    xmu = x - mu
-    sq = xmu ** 2
-    var = np.sum(sq, axis=1, keepdims=True) / D
-    std = np.sqrt(var + eps)
-    istd = 1 / std
-    xhat = xmu * istd
-    xhat = xhat.T
-
-    out = gamma * xhat + beta
-
-    cache = (xhat, gamma, xmu, istd, std, var, eps, N, D)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return out, cache
 
+def rel_error(x, y):
+    """ returns relative error """
+    return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
 
 def layernorm_backward(dout, cache):
     """
@@ -437,31 +427,18 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    xhat, gamma, xmu, istd, std, var, eps, N, D = cache
-
-    dgamma = np.sum(dout * xhat, axis=0)
-    dbeta = np.sum(dout, axis=0)
+    xhat, *_ = cache
 
     dout = dout.T
-    xhat = xhat.T
 
-    dxhat = dout * gamma[:, np.newaxis]
-    dxmu1 = dxhat * istd
+    dx, *_ = batchnorm_backward(dout, cache)
+    #dx0, *_ = batchnorm_backward_alt(dout, cache)  Very unclear why this doesn't work
+    #print("dx batch", rel_error(dx, dx0))
 
-    distd = np.sum(dxhat * xmu, axis=1, keepdims=True)
-    dstd = - distd / (std ** 2)
-    dvar = dstd / (2.0 * np.sqrt(var + eps))
-
-    dsq = dvar / D * np.ones((N, D))
-    dxmu2 = 2 * dsq * xmu
-
-    dx1 = dxmu1 + dxmu2
-    dmu = - np.sum(dx1, axis=1, keepdims=True)
-    dx2 = dmu * np.ones((N, D)) / D
-
-    dx = dx1 + dx2
     dx = dx.T
 
+    dgamma = np.sum(dout * xhat, axis=1)
+    dbeta = np.sum(dout, axis=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
