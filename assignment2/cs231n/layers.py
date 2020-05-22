@@ -340,7 +340,7 @@ def batchnorm_backward_alt(dout, cache):
 
     xhat, gamma, xmu, istd, std, var, eps, N, D = cache
 
-    dx = (1. * gamma/(N * std)) * (N * dout - np.sum(dout, axis=0) - xmu * np.sum((dout * xmu), axis=0)/std**2)
+    dx = (1. * gamma/(N * std)) * (N * dout - np.sum(dout, axis=0) - xhat * np.sum(xhat * dout, axis=0))
     dgamma = np.sum(dout * xhat, axis=0)
     dbeta = np.sum(dout, axis=0)
 
@@ -387,6 +387,9 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    # Transpose x
+    x = x.T
+
     N, D = x.shape
 
     mu = np.sum(x, axis=1, keepdims=True) / D
@@ -396,6 +399,8 @@ def layernorm_forward(x, gamma, beta, ln_param):
     std = np.sqrt(var + eps)
     istd = 1 / std
     xhat = xmu * istd
+    xhat = xhat.T
+
     out = gamma * xhat + beta
 
     cache = (xhat, gamma, xmu, istd, std, var, eps, N, D)
@@ -434,7 +439,13 @@ def layernorm_backward(dout, cache):
 
     xhat, gamma, xmu, istd, std, var, eps, N, D = cache
 
-    dxhat = dout * gamma
+    dgamma = np.sum(dout * xhat, axis=0)
+    dbeta = np.sum(dout, axis=0)
+
+    dout = dout.T
+    xhat = xhat.T
+
+    dxhat = dout * gamma[:, np.newaxis]
     dxmu1 = dxhat * istd
 
     distd = np.sum(dxhat * xmu, axis=1, keepdims=True)
@@ -445,17 +456,12 @@ def layernorm_backward(dout, cache):
     dxmu2 = 2 * dsq * xmu
 
     dx1 = dxmu1 + dxmu2
-
     dmu = - np.sum(dx1, axis=1, keepdims=True)
-
     dx2 = dmu * np.ones((N, D)) / D
 
     dx = dx1 + dx2
+    dx = dx.T
 
-#    dx0 = (1. * gamma/(D * std)) * (D * dout - np.sum(dout, axis=1, keepdims=True) - xmu * np.sum((dout * xmu), axis=1, keepdims=True)/std**2)
-
-    dgamma = np.sum(dout * xhat, axis=0)
-    dbeta = np.sum(dout, axis=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -938,7 +944,23 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x = x.T
+
+    dout
+
+    mu = np.sum(x, axis=0) / N
+    xmu = x - mu
+    sq = xmu ** 2
+    var = np.sum(sq, axis=0) / N
+    std = np.sqrt(var + eps)
+    istd = 1 / std
+    xhat = xmu * istd
+    xhat = xhat.T
+
+    out = gamma * xhat + beta
+
+    cache = (xhat, gamma, xmu, istd, std, var, eps, N, D)
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -967,6 +989,7 @@ def spatial_groupnorm_backward(dout, cache):
     # This will be extremely similar to the layer norm implementation.        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
 
     pass
 
