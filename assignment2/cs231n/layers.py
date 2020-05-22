@@ -341,7 +341,7 @@ def batchnorm_backward_alt(dout, cache):
     xhat, gamma, xmu, istd, std, var, eps, N, D = cache
 
     dxhat = gamma * dout
-    dx = (1./(N * std)) * (N *dxhat  - np.sum(dxhat, axis=0) - xhat * np.sum(xhat * dxhat, axis=0))
+    dx = (1./(N * std)) * (N * dxhat  - np.sum(dxhat, axis=0) - xhat * np.sum(xhat * dxhat, axis=0))
     dgamma = np.sum(dout * xhat, axis=0)
     dbeta = np.sum(dout, axis=0)
 
@@ -433,7 +433,7 @@ def layernorm_backward(dout, cache):
     dout = dout.T
 
     dx, *_ = batchnorm_backward(dout, cache)
-    #dx0, *_ = batchnorm_backward_alt(dout, cache)  Very unclear why this doesn't work
+    #dx0, *_ = batchnorm_backward_alt(dout, cache)  #Very unclear why this doesn't work
     #print("dx batch", rel_error(dx, dx0))
 
     dx = dx.T
@@ -922,24 +922,26 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    x = x.T
+    N, C, H, W = x.shape
 
-    dout
+    x = x.reshape((N * G, -1)).T
+    gamma = gamma[np.newaxis, :, np.newaxis, np.newaxis]
+    beta = beta[np.newaxis, :, np.newaxis, np.newaxis]
 
-    mu = np.sum(x, axis=0) / N
+    N0, D0 = x.shape
+    mu = np.sum(x, axis=0, keepdims=True) / N0
     xmu = x - mu
+
     sq = xmu ** 2
-    var = np.sum(sq, axis=0) / N
+    var = np.sum(sq, axis=0, keepdims=True) / N0
     std = np.sqrt(var + eps)
+
     istd = 1 / std
     xhat = xmu * istd
-    xhat = xhat.T
-
+    xhat = xhat.T.reshape((N, C, H, W))
     out = gamma * xhat + beta
 
-    cache = (xhat, gamma, xmu, istd, std, var, eps, N, D)
-
-
+    cache = (xhat, std, gamma, N, C, H, W, G)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -968,8 +970,22 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    xhat, std, gamma, N, C, H, W, G = cache
 
-    pass
+    dxhat = gamma * dout
+    dbeta = np.sum(dout, axis=(0, 2, 3))
+    dgamma = np.sum(dout * xhat, axis=(0, 2, 3))
+
+    N0 = N * G
+
+    dout = dout.reshape((N0, -1)).T
+    xhat = xhat.reshape((N0, -1)).T
+    dxhat = dxhat.reshape((N0, -1)).T
+
+    N1, D1 = dout.shape
+
+    dx = 1./(N1 * std) * (N1 * dxhat - np.sum(dxhat, axis=0) - xhat * np.sum(xhat * dxhat, axis=0))
+    dx = dx.T.reshape((N, C, H, W))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
