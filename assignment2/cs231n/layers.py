@@ -603,7 +603,6 @@ def conv_forward_naive(x, w, b, conv_param):
     F, C, HH, WW = w.shape
     pad, stride = itemgetter('pad', 'stride')(conv_param)
 
-
     npad = [(0, 0), (0, 0), (pad, pad), (pad, pad)]
     x_pad = np.pad(x, pad_width=npad)
 

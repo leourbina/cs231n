@@ -1,5 +1,3 @@
-from __future__ import print_function, division
-from builtins import range
 import numpy as np
 
 
@@ -462,7 +460,8 @@ def temporal_softmax_loss(x, y, mask, verbose=False):
     dx_flat /= N
     dx_flat *= mask_flat[:, None]
 
-    if verbose: print('dx_flat: ', dx_flat.shape)
+    if verbose:
+        print("dx_flat: ", dx_flat.shape)
 
     dx = dx_flat.reshape(N, T, V)
 
