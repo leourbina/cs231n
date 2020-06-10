@@ -18,15 +18,13 @@ class CaptioningRNN(object):
     Note that we don't use any regularization for the CaptioningRNN.
     """
 
-    def __init__(
-        self,
-        word_to_idx,
-        input_dim=512,
-        wordvec_dim=128,
-        hidden_dim=128,
-        cell_type="rnn",
-        dtype=np.float32,
-    ):
+    def __init__(self,
+                 word_to_idx,
+                 input_dim=512,
+                 wordvec_dim=128,
+                 hidden_dim=128,
+                 cell_type="rnn",
+                 dtype=np.float32):
         """
         Construct a new CaptioningRNN instance.
 
@@ -151,7 +149,44 @@ class CaptioningRNN(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        if self.cell_type is "rnn":
+            forward = rnn_forward
+            backward = rnn_backward
+        elif self.cell_type is "lstm":
+            forward = lstm_forward
+            backward = lstm_backward
+            raise NotImplementedError("LSTM not implemented")
+        else:
+            raise RuntimeError(f"Unrecognized cell type {self.cell_type}")
+
+
+        # features (N, D)
+        # W_proj   (D, H)
+        # h0       (N, H)
+        h0 = features.dot(W_proj) + b_proj
+
+        captions_embed, word_cache = word_embedding_forward(captions_in, W_embed)
+        h, rnn_cache = forward(captions_embed, h0, Wx, Wh, b)
+        out, affine_cache = temporal_affine_forward(h, W_vocab, b_vocab)
+        loss, dout = temporal_softmax_loss(out, captions_out, mask)
+
+        # Backward pass
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dout, affine_cache)
+        dcaptions_embed, dh0, dWx, dWh, db = backward(dh, rnn_cache)
+        dW_embed = word_embedding_backward(dcaptions_embed, word_cache)
+
+        dW_proj = features.T.dot(dh0)
+        db_proj = np.sum(dh0, axis=0)
+
+        grads['W_embed'] = dW_embed
+        grads['Wx'] = dWx
+        grads['Wh'] = dWh
+        grads['b'] = db
+        grads['W_vocab'] = dW_vocab
+        grads['b_vocab'] = db_vocab
+
+        grads['W_proj'] = dW_proj
+        grads['b_proj'] = db_proj
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -219,7 +254,17 @@ class CaptioningRNN(object):
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        V, W = W_embed.shape
+
+        h = features.dot(W_proj) + b_proj
+        x = np.ones((N, W), dtype=np.int32) * self._start
+
+        for i in range(max_length):
+            h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            out = h.dot(W_vocab) + b_vocab
+            max_idx = out.argmax(axis=1)
+            captions[:, i] = max_idx
+            x = W_embed[max_idx]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
