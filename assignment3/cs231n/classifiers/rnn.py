@@ -149,30 +149,29 @@ class CaptioningRNN(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        if self.cell_type is "rnn":
-            forward = rnn_forward
-            backward = rnn_backward
-        elif self.cell_type is "lstm":
-            forward = lstm_forward
-            backward = lstm_backward
-            raise NotImplementedError("LSTM not implemented")
-        else:
-            raise RuntimeError(f"Unrecognized cell type {self.cell_type}")
-
-
         # features (N, D)
         # W_proj   (D, H)
         # h0       (N, H)
         h0 = features.dot(W_proj) + b_proj
 
         captions_embed, word_cache = word_embedding_forward(captions_in, W_embed)
-        h, rnn_cache = forward(captions_embed, h0, Wx, Wh, b)
+
+        if self.cell_type is "rnn":
+            h, rnn_cache = rnn_forward(captions_embed, h0, Wx, Wh, b)
+        elif self.cell_type is "lstm":
+            h, rnn_cache = lstm_forward(captions_embed, h0, Wx, Wh, b)
+
         out, affine_cache = temporal_affine_forward(h, W_vocab, b_vocab)
         loss, dout = temporal_softmax_loss(out, captions_out, mask)
 
         # Backward pass
         dh, dW_vocab, db_vocab = temporal_affine_backward(dout, affine_cache)
-        dcaptions_embed, dh0, dWx, dWh, db = backward(dh, rnn_cache)
+
+        if self.cell_type is "rnn":
+            dcaptions_embed, dh0, dWx, dWh, db = rnn_backward(dh, rnn_cache)
+        elif self.cell_type is "lstm":
+            dcaptions_embed, dh0, dWx, dWh, db = lstm_backward(dh, rnn_cache)
+
         dW_embed = word_embedding_backward(dcaptions_embed, word_cache)
 
         dW_proj = features.T.dot(dh0)
@@ -254,13 +253,19 @@ class CaptioningRNN(object):
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+        D, H = W_proj.shape
         V, W = W_embed.shape
 
+        c = np.zeros((N, H))
         h = features.dot(W_proj) + b_proj
         x = np.ones((N, W), dtype=np.int32) * self._start
 
         for i in range(max_length):
-            h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            if self.cell_type is 'rnn':
+                h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            else:
+                h, c, _ = lstm_step_forward(x, h, c, Wx, Wh, b)
+
             out = h.dot(W_vocab) + b_vocab
             max_idx = out.argmax(axis=1)
             captions[:, i] = max_idx
